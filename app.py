@@ -60,9 +60,3 @@ else:
                 
                 # Response ko history mein save karna
                 st.session_state.msgs.append({"role": "assistant", "content": txt})
-                
-            except Exception as e:
-                # Agar API key abhi bhi kaam nahi karegi toh yahan error dikhayega
-                st.error(f"Opps! Kuch error aaya hai: {e}")
-                if "401" in str(e):
-                    st.warning("Lagta hai API Key abhi bhi activate nahi hui ya invalid hai.")
