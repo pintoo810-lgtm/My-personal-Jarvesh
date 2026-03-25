@@ -1,53 +1,81 @@
 import streamlit as st
 from groq import Groq
+import speech_recognition as sr
+import pyttsx3
+import cv2
+from streamlit_webrtc import webrtc_streamer
 
-# 1. Page Setup
-st.set_page_config(page_title="Jarvis AI", page_icon="🤖")
+# --- CONFIG ---
+client = Groq(api_key="Gsk_qdabF41X56cADuYVKlJjWGdyb3FYOL52oANDMA0iQFqwJ7JLeNem") 
 
-# 2. Authentication Logic
-if "auth" not in st.session_state:
-    st.session_state.auth = False
+# Speaker Setup (Text-to-Speech)
+engine = pyttsx3.init()
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
 
-if not st.session_state.auth:
-    st.title("🔒 Private Access")
-    pwd = st.text_input("Enter Passphrase:", type="password")
-    if st.button("Unlock"):
-        # Aapka family password
-        if pwd == "PINTU_PASWAN_DEEPAK_KUMAR_DAKSH_PASWAN_JYOTI_PASWAN_URMILA_DEVI_SWEET_FAMILY":
-            st.session_state.auth = True
-            st.rerun()
-        else:
-            st.error("Ghalat Password!")
-else:
-    st.title("🤖 My Jarvis")
+# Mic Setup (Speech-to-Text)
+def listen():
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening... Hukum karein Boss!")
+        try:
+            audio = r.listen(source, timeout=5, phrase_time_limit=5)
+            query = r.recognize_google(audio, language='en-IN')
+            return query
+        except:
+            return None
+
+# --- UI DESIGN ---
+st.set_page_config(page_title="Jarvis Pro", layout="wide")
+st.title("🤖 My Jarvis: Full Access")
+
+# Layout: Left for Camera, Right for Chat
+col_cam, col_chat = st.columns([1, 1.5])
+
+with col_cam:
+    st.subheader("📸 Live Camera")
+    # Real-time camera stream
+    webrtc_streamer(key="jarvis-vision")
     
-    # 3. Direct API Client (Secrets bypass kar diya hai)
-    # Yeh wahi key hai jo aapne generate ki hai
-    client = Groq(api_key="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")
+    st.divider()
+    
+    # Mic Activation Button
+    if st.button("🎤 Activate Voice Command", use_container_width=True):
+        command = listen()
+        if command:
+            st.session_state.messages.append({"role": "user", "content": command})
+            
+            # API Call
+            chat_completion = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": command}]
+            )
+            response = chat_completion.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            speak(response)
+            st.rerun()
 
-    # 4. Chat History
-    if "msgs" not in st.session_state:
-        st.session_state.msgs = []
+with col_chat:
+    st.subheader("💬 Chat Hub")
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-    for m in st.session_state.msgs:
-        with st.chat_message(m["role"]):
-            st.markdown(m["content"])
+    # Display Chat History
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
 
-    # 5. Chat Input
-    if p := st.chat_input("Hukum karein Boss..."):
-        st.session_state.msgs.append({"role": "user", "content": p})
-        with st.chat_message("user"):
-            st.markdown(p)
-
-        with st.chat_message("assistant"):
-            try:
-                # Humne Playground wala model hi use kiya hai
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.msgs]
-                )
-                answer = response.choices[0].message.content
-                st.markdown(answer)
-                st.session_state.msgs.append({"role": "assistant", "content": answer})
-            except Exception as e:
-                st.error(f"Error: {e}")
+    # Manual Text Input
+    user_input = st.chat_input("Yahan type karein...")
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        
+        chat_completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": user_input}]
+        )
+        response = chat_completion.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        speak(response)
+        st.rerun()
