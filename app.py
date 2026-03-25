@@ -2,23 +2,20 @@ import streamlit as st
 from groq import Groq
 import speech_recognition as sr
 import pyttsx3
-import cv2
 from streamlit_webrtc import webrtc_streamer
+client = Groq(api_key="Gsk_qdabF41X56cADuYVKlJjWGdyb3FYOL52oANDMA0iQFqwJ7JLeNem")
 
-# --- CONFIG ---
-client = Groq(api_key="Gsk_qdabF41X56cADuYVKlJjWGdyb3FYOL52oANDMA0iQFqwJ7JLeNem") 
-
-# Speaker Setup (Text-to-Speech)
+# Speaker Setup
 engine = pyttsx3.init()
 def speak(text):
     engine.say(text)
     engine.runAndWait()
 
-# Mic Setup (Speech-to-Text)
+# Mic Setup
 def listen():
     r = sr.Recognizer()
     with sr.Microphone() as source:
-        st.info("Listening... Hukum karein Boss!")
+        st.toast("Listening... Boliye!")
         try:
             audio = r.listen(source, timeout=5, phrase_time_limit=5)
             query = r.recognize_google(audio, language='en-IN')
@@ -26,56 +23,49 @@ def listen():
         except:
             return None
 
-# --- UI DESIGN ---
+# --- UI SETUP ---
 st.set_page_config(page_title="Jarvis Pro", layout="wide")
-st.title("🤖 My Jarvis: Full Access")
+st.title("🤖 My Jarvis: Vision & Voice")
 
-# Layout: Left for Camera, Right for Chat
-col_cam, col_chat = st.columns([1, 1.5])
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-with col_cam:
-    st.subheader("📸 Live Camera")
-    # Real-time camera stream
-    webrtc_streamer(key="jarvis-vision")
-    
+col_left, col_right = st.columns([1, 1.5])
+
+with col_left:
+    st.subheader("📸 Live Vision")
+    webrtc_streamer(key="jarvis-camera")
     st.divider()
-    
-    # Mic Activation Button
-    if st.button("🎤 Activate Voice Command", use_container_width=True):
-        command = listen()
-        if command:
-            st.session_state.messages.append({"role": "user", "content": command})
-            
-            # API Call
-            chat_completion = client.chat.completions.create(
+    if st.button("🎤 Activate Mic", use_container_width=True):
+        voice_query = listen()
+        if voice_query:
+            st.session_state.messages.append({"role": "user", "content": voice_query})
+            completion = client.chat.completions.create(
                 model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": command}]
+                messages=[{"role": "user", "content": voice_query}]
             )
-            response = chat_completion.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            speak(response)
+            res = completion.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": res})
             st.rerun()
 
-with col_chat:
-    st.subheader("💬 Chat Hub")
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Display Chat History
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
-
-    # Manual Text Input
-    user_input = st.chat_input("Yahan type karein...")
-    if user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        
-        chat_completion = client.chat.completions.create(
+with col_right:
+    st.subheader("💬 Chat")
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+    text_input = st.chat_input("Hukum karein Boss...")
+    if text_input:
+        st.session_state.messages.append({"role": "user", "content": text_input})
+        completion = client.chat.completions.create(
             model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": user_input}]
+            messages=[{"role": "user", "content": text_input}]
         )
-        response = chat_completion.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        speak(response)
+        res = completion.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": res})
         st.rerun()
+
+if len(st.session_state.messages) > 0:
+    last_msg = st.session_state.messages[-1]
+    if last_msg["role"] == "assistant":
+        speak(last_msg["content"])
+
