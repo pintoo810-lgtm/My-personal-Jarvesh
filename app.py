@@ -1,71 +1,68 @@
 import streamlit as st
 from groq import Groq
-from gtts import gTTS
-import base64
-import os
 
-# Page Configuration - Tab name aur logo
-st.set_page_config(page_title="Jarvis - Pintu Kumar's AI", page_icon="🎙️")
+# Page Setup
+st.set_page_config(page_title="Jarvis AI", page_icon="🤖", layout="centered")
 
-# Authentication Logic - Password setup
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
+# Password Protection
+if "auth" not in st.session_state:
+    st.session_state.auth = False
 
-if not st.session_state.authenticated:
+if not st.session_state.auth:
     st.title("🔒 Private Access")
-    pwd = st.text_input("Apna Khash Passphrase Daalein:", type="password")
-    if st.button("Unlock Jarvis"):
+    # Aapka wahi purana password
+    pwd = st.text_input("Enter Passphrase:", type="password")
+    if st.button("Unlock"):
         if pwd == "PINTU_PASWAN_DEEPAK_KUMAR_DAKSH_PASWAN_JYOTI_PASWAN_URMILA_DEVI_SWEET_FAMILY":
-            st.session_state.authenticated = True
+            st.session_state.auth = True
             st.rerun()
+        else:
+            st.error("Ghalat Password! Dubara koshish karein.")
 else:
-    # --- Main App Interface ---
     st.title("🤖 My Jarvis")
     
-    # Text-to-Speech Function (Speaker feature)
-    def text_to_speech(text):
-        tts = gTTS(text=text, lang='hi', slow=False)
-        filename = "temp_audio.mp3"
-        tts.save(filename)
-        with open(filename, "rb") as f:
-            audio_bytes = f.read()
-            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-            audio_html = f'<audio controls autoplay style="width: 100%;"><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
-            st.markdown(audio_html, unsafe_allow_html=True)
-        os.remove(filename)
+    # Nayi API Key Setup
+    try:
+        client = Groq(api_key="Gsk_8JBxLU8WlAT5BvGAH80nWGdyb3FY0AE00X1Kdv1640LTSpo1As36")
+    except Exception as e:
+        st.error(f"Client setup error: {e}")
 
-    # Initialize Groq Client (DIRECT API KEY)
-    # Galti is line mein pehle thi, ab maine sahi key daal di hai:
-    client = Groq(api_key="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")
+    # Chat history initialize karna
+    if "msgs" not in st.session_state:
+        st.session_state.msgs = []
 
-    # Chat Messages Setup
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Purani chat history screen par dikhana
+    for m in st.session_state.msgs:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # Chat UI (Keyboard mic icon already integrates with this input box)
-    if prompt := st.chat_input("Hukum karein Boss..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    # Naya input lena
+    if p := st.chat_input("Hukum karein Boss..."):
+        # User ka message save aur display karna
+        st.session_state.msgs.append({"role": "user", "content": p})
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(p)
 
+        # Assistant ka response generate karna
         with st.chat_message("assistant"):
             try:
-                # Naya Model jo decommissioned nahi hai:
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",  # Ye naya model hai
-                    messages=st.session_state.messages
+                # API Call - Llama 3 model ke saath
+                res = client.chat.completions.create(
+                    model="llama3-8b-8192",
+                    messages=[
+                        {"role": m["role"], "content": m["content"]}
+                        for m in st.session_state.msgs
+                    ],
                 )
-                ans = response.choices[0].message.content
-                st.markdown(ans)
-                st.session_state.messages.append({"role": "assistant", "content": ans})
                 
-                # Jawab bol kar sunayein (Audio component will play automatically)
-                if st.checkbox("Audio Reply Sunein?", value=True):
-                    text_to_speech(ans)
-
+                txt = res.choices[0].message.content
+                st.markdown(txt)
+                
+                # Response ko history mein save karna
+                st.session_state.msgs.append({"role": "assistant", "content": txt})
+                
             except Exception as e:
-                st.error(f"Error: {e}")
+                # Agar API key abhi bhi kaam nahi karegi toh yahan error dikhayega
+                st.error(f"Opps! Kuch error aaya hai: {e}")
+                if "401" in str(e):
+                    st.warning("Lagta hai API Key abhi bhi activate nahi hui ya invalid hai.")
