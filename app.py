@@ -1,4 +1,3 @@
-
 import streamlit as st
 from groq import Groq
 
@@ -24,7 +23,6 @@ else:
     st.title("🤖 My Jarvis")
     
     # 4. Initialize Groq Client with your new Key
-    # GSK Key updated as requested
     client = Groq(api_key="Gsk_8JBxLU8WlAT5BvGAH80nWGdyb3FY0AE00X1Kdv1640LTSpo1As36")
 
     # 5. Initialize Chat History
@@ -38,7 +36,7 @@ else:
 
     # 7. Chat Input & Processing
     if p := st.chat_input("Hukum karein Boss..."):
-        # Append user message
+        # Append user message to state and display
         st.session_state.msgs.append({"role": "user", "content": p})
         with st.chat_message("user"):
             st.markdown(p)
@@ -46,7 +44,7 @@ else:
         # Generate Assistant Response
         with st.chat_message("assistant"):
             try:
-                # API request using Llama 3
+                # API request using Llama 3 8B model
                 response = client.chat.completions.create(
                     model="llama3-8b-8192",
                     messages=[
@@ -62,4 +60,5 @@ else:
                 st.session_state.msgs.append({"role": "assistant", "content": answer})
                 
             except Exception as e:
+                # Display error if API key or connection fails
                 st.error(f"System Error: {e}")
