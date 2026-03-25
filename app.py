@@ -2,7 +2,7 @@ import streamlit as st
 from groq import Groq
 
 # --- CONFIGURATION ---
-API_KEY = "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" 
+API_KEY = "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" 
 MY_SECRET_PASS = "PINTU_PASWAN_DEEPAK_KUMAR_DAKSH_PASWAN_JYOTI_PASWAN_URMILA_DEVI_SWEET_FAMILY"
 
 st.set_page_config(page_title="My Private AI", layout="centered")
@@ -39,7 +39,7 @@ else:
 
         with st.chat_message("assistant"):
             response = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 messages=st.session_state.messages
             )
             full_response = response.choices[0].message.content
